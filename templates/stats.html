@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Statistiques Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Statistiques des réponses</h1>
+    {% for s in stats %}
+        <h2>{{ loop.index }}. {{ s.question }}</h2>
+        <canvas id="chart{{ loop.index }}"></canvas>
+        <ul>
+            {% for entry in s.details %}
+                <li><strong>{{ entry.name }}</strong> : {{ s.choices[entry["q" + loop.parent.loop.index|string]] }}</li>
+            {% endfor %}
+        </ul>
+        <p><strong>Bonne réponse :</strong> {{ ['A', 'B', 'C', 'D'][s.correct] }} — {{ s.explanation }}</p>
+        <script>
+            const ctx{{ loop.index }} = document.getElementById('chart{{ loop.index }}').getContext('2d');
+            new Chart(ctx{{ loop.index }}, {
+                type: 'bar',
+                data: {
+                    labels: {{ s.choices | tojson }},
+                    datasets: [{
+                        label: 'Réponses',
+                        data: [ {% for i in range(4) %} {{ s.counts.get(i, 0) }} {% if not loop.last %}, {% endif %} {% endfor %} ],
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        </script>
+    {% endfor %}
+    <br><a href="/">Retour au quiz</a>
+</body>
+</html>

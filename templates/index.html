@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Infectieux</title>
+</head>
+<body>
+    <h1>Quiz d'infectiologie</h1>
+    <form id="quizForm">
+        <label>Nom : <input type="text" name="name" required></label><br><br>
+        {% for q in questions %}
+            <div>
+                <h3>{{ loop.index }}. {{ q.question }}</h3>
+                {% for choice in q.choices %}
+                    <label><input type="radio" name="q{{ q.id }}" value="{{ loop.index0 }}" required> {{ choice }}</label><br>
+                {% endfor %}
+            </div><br>
+        {% endfor %}
+        <button type="submit">Envoyer</button>
+    </form>
+    <p><a href="/admin_stats">Voir les statistiques</a></p>
+
+    <script>
+        document.getElementById('quizForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const data = {};
+            form.forEach((value, key) => {
+                data[key] = key === "name" ? value : parseInt(value);
+            });
+
+            fetch('/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(response => {
+                if (!response.ok) return response.json().then(err => { throw err; });
+                return response.json();
+            }).then(() => {
+                alert("Merci pour votre participation !");
+                location.reload();
+            }).catch(err => {
+                alert(err.message || "Erreur !");
+            });
+        });
+    </script>
+</body>
+</html>

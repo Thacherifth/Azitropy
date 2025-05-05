@@ -1,0 +1,6 @@
+Flask
+qrcode
+pandas
+matplotlib
+Pillow
+gunicorn
