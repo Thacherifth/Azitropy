@@ -12,7 +12,7 @@
         <canvas id="chart{{ loop.index }}"></canvas>
         <ul>
             {% for entry in s.details %}
-                <li><strong>{{ entry.name }}</strong> : {{ s.choices[entry["q" + loop.parent.loop.index|string]] }}</li>
+                <li><strong>{{ entry.name }}</strong> : {{ s.choices[entry["q" + s.question_id|string]] }}</li>
             {% endfor %}
         </ul>
         <p><strong>Bonne réponse :</strong> {{ ['A', 'B', 'C', 'D'][s.correct] }} — {{ s.explanation }}</p>
@@ -25,8 +25,8 @@
                     datasets: [{
                         label: 'Réponses',
                         data: [ {% for i in range(4) %} {{ s.counts.get(i, 0) }} {% if not loop.last %}, {% endif %} {% endfor %} ],
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
                         borderWidth: 1
                     }]
                 },
@@ -39,6 +39,6 @@
             });
         </script>
     {% endfor %}
-    <br><a href="/">Retour au quiz</a>
+    <br><a href="/admin_stats">Retour</a>
 </body>
 </html>

@@ -7,6 +7,7 @@ from collections import Counter
 app = Flask(__name__)
 app.secret_key = 'secret_key'
 
+# ✅ QUESTIONS DU QUIZ
 questions = [
     {
         "id": 1,
@@ -95,8 +96,11 @@ def submit():
 def save_results(data):
     file_path = os.path.join("data", "results.csv")
     os.makedirs("data", exist_ok=True)
+    if not os.path.exists(file_path):
+        open(file_path, 'w').close()
+
     df = pd.DataFrame([data])
-    df.to_csv(file_path, mode='a', header=not os.path.exists(file_path), index=False)
+    df.to_csv(file_path, mode='a', header=not os.path.getsize(file_path), index=False)
 
 
 @app.route("/admin_stats", methods=["GET", "POST"])
@@ -120,9 +124,20 @@ def admin_stats():
     stats = []
 
     for q in questions:
-        answers = df.get(f'q{q["id"]}').dropna() if f'q{q["id"]}' in df else []
+        question_id = q["id"]
+        answer_column = f"q{question_id}"
+        answers = df.get(answer_column).dropna() if answer_column in df else []
         counts = dict(Counter(answers))
-        details = df[["name", f"q{q['id']}"]].dropna().to_dict(orient="records") if f'q{q["id"]}' in df else []
+        details = []
+
+        if answer_column in df:
+            for _, row in df.iterrows():
+                if pd.notna(row.get(answer_column)):
+                    details.append({
+                        "name": row["name"],
+                        "answer_index": int(row[answer_column])
+                    })
+
         stats.append({
             "question": q["question"],
             "choices": q["choices"],
@@ -135,14 +150,13 @@ def admin_stats():
     return render_template("stats.html", stats=stats)
 
 
-@app.route("/generate_qr")
 def generate_qr():
     url = "https://quiz-infectieux.onrender.com"
     qr = qrcode.make(url)
     os.makedirs("static", exist_ok=True)
     qr.save("static/qr.png")
-    return "QR code généré."
 
 
 if __name__ == "__main__":
+    generate_qr()
     app.run(debug=True)
