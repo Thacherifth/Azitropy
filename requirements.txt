@@ -1,6 +1,8 @@
 Flask
-qrcode
 pandas
-matplotlib
+qrcode
 Pillow
 gunicorn
+matplotlib
+SQLAlchemy
+werkzeug

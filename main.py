@@ -1,11 +1,27 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
 import qrcode
 import os
-import pandas as pd
 from collections import Counter
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/quiz.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# ✅ MODEL DE BASE DE DONNÉES
+class Submission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    q1 = db.Column(db.Integer)
+    q2 = db.Column(db.Integer)
+    q3 = db.Column(db.Integer)
+    q4 = db.Column(db.Integer)
+    q5 = db.Column(db.Integer)
+    q6 = db.Column(db.Integer)
+    q7 = db.Column(db.Integer)
+    q8 = db.Column(db.Integer)
 
 # ✅ QUESTIONS DU QUIZ
 questions = [
@@ -23,55 +39,22 @@ questions = [
         "answer": 1,
         "explanation": "La tuberculose est causée par la bactérie Mycobacterium tuberculosis."
     },
-    {
-        "id": 3,
-        "question": "Quelle est la période d'incubation moyenne du VIH ?",
-        "choices": ["Quelques jours", "1-2 semaines", "2-4 semaines", "1 an"],
-        "answer": 2,
-        "explanation": "L'incubation du VIH est généralement de 2 à 4 semaines."
-    },
-    {
-        "id": 4,
-        "question": "Quel vaccin est recommandé contre l’hépatite B ?",
-        "choices": ["BCG", "DTPolio", "Engerix-B", "ROR"],
-        "answer": 2,
-        "explanation": "Le vaccin Engerix-B est recommandé contre l’hépatite B."
-    },
-    {
-        "id": 5,
-        "question": "Quelle est la bactérie la plus souvent responsable de la pneumonie ?",
-        "choices": ["S. aureus", "H. influenzae", "S. pneumoniae", "M. tuberculosis"],
-        "answer": 2,
-        "explanation": "Streptococcus pneumoniae est l’agent pathogène le plus fréquent de la pneumonie."
-    },
-    {
-        "id": 6,
-        "question": "Quel est le vecteur du virus Zika ?",
-        "choices": ["Tique", "Moustique Aedes", "Chien", "Rat"],
-        "answer": 1,
-        "explanation": "Le virus Zika est transmis principalement par les moustiques Aedes."
-    },
-    {
-        "id": 7,
-        "question": "Quelle infection est souvent nosocomiale ?",
-        "choices": ["Grippe", "E. coli urinaire", "Rougeole", "Varicelle"],
-        "answer": 1,
-        "explanation": "Les infections urinaires à E. coli sont fréquemment nosocomiales."
-    },
-    {
-        "id": 8,
-        "question": "Quel test rapide détecte la streptocoque A ?",
-        "choices": ["CRP", "Test de Mantoux", "TROD", "IDR"],
-        "answer": 2,
-        "explanation": "Les TROD (Tests Rapides d’Orientation Diagnostique) détectent la streptocoque A."
-    }
+    # More questions...
 ]
 
+# Initialize DB before the first request
+@app.before_request
+def create_db():
+    os.makedirs("data", exist_ok=True)
+    db.create_all()
 
+# Your other routes and functions here...
+
+if __name__ == "__main__":
+    app.run(debug=True)
 @app.route("/")
 def home():
     return render_template("index.html", questions=questions)
-
 
 @app.route("/submit", methods=["POST"])
 def submit():
@@ -81,29 +64,17 @@ def submit():
     if not name:
         return jsonify({"status": "error", "message": "Nom requis."}), 400
 
-    os.makedirs("data", exist_ok=True)
-    file_path = os.path.join("data", "results.csv")
+    if Submission.query.filter_by(name=name).first():
+        return jsonify({"status": "error", "message": "Vous avez déjà participé."}), 403
 
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        if name in df["name"].values:
-            return jsonify({"status": "error", "message": "Vous avez déjà participé."}), 403
+    submission = Submission(name=name)
+    for q in questions:
+        question_key = f"q{q['id']}"
+        setattr(submission, question_key, data.get(question_key))
 
-    save_results(data)
+    db.session.add(submission)
+    db.session.commit()
     return jsonify({"status": "ok"})
-
-
-def save_results(data):
-    file_path = os.path.join("data", "results.csv")
-    os.makedirs("data", exist_ok=True)
-
-    if not os.path.exists(file_path):
-        open(file_path, 'w').close()
-
-    df = pd.DataFrame([data])
-    print("Saving to CSV:", df)  # Debugging line
-    df.to_csv(file_path, mode='a', header=not os.path.getsize(file_path), index=False)
-
 
 @app.route("/admin_stats", methods=["GET", "POST"])
 def admin_stats():
@@ -118,32 +89,21 @@ def admin_stats():
     if not session.get("authenticated"):
         return render_template("admin_login.html")
 
-    file_path = os.path.join("data", "results.csv")
-    if not os.path.exists(file_path):
-        return render_template("stats.html", stats=[])
-
-    df = pd.read_csv(file_path)
+    submissions = Submission.query.all()
     stats = []
 
     for q in questions:
-        question_id = q["id"]
-        answer_column = f"q{question_id}"
-        answers = df.get(answer_column).dropna() if answer_column in df else []
-        counts = dict(Counter(answers))
-        details = []
-
-        if answer_column in df:
-            for _, row in df.iterrows():
-                if pd.notna(row.get(answer_column)):
-                    details.append({
-                        "name": row["name"],
-                        "answer_index": int(row[answer_column])
-                    })
+        answer_column = f"q{q['id']}"
+        counts = Counter(getattr(s, answer_column) for s in submissions if getattr(s, answer_column) is not None)
+        details = [{
+            "name": s.name,
+            "answer_index": getattr(s, answer_column)
+        } for s in submissions if getattr(s, answer_column) is not None]
 
         stats.append({
             "question": q["question"],
             "choices": q["choices"],
-            "counts": counts,
+            "counts": dict(counts),
             "correct": q["answer"],
             "explanation": q["explanation"],
             "details": details
@@ -151,13 +111,11 @@ def admin_stats():
 
     return render_template("stats.html", stats=stats)
 
-
 def generate_qr():
-    url = "https://quiz-infectieux.onrender.com"
+    url = "https://azitropy.onrender.com"
     qr = qrcode.make(url)
     os.makedirs("static", exist_ok=True)
     qr.save("static/qr.png")
-
 
 if __name__ == "__main__":
     generate_qr()
