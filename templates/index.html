@@ -22,27 +22,30 @@
 
     <script>
         document.getElementById('quizForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const form = new FormData(e.target);
-            const data = {};
-            form.forEach((value, key) => {
-                data[key] = key === "name" ? value : parseInt(value);
-            });
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const data = { name: form.get('name') };
+    form.forEach((value, key) => {
+        if (key !== "name") {
+            data[key] = parseInt(value);
+        }
+    });
 
-            fetch('/submit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            }).then(response => {
-                if (!response.ok) return response.json().then(err => { throw err; });
-                return response.json();
-            }).then(() => {
-                alert("Merci pour votre participation !");
-                location.reload();
-            }).catch(err => {
-                alert(err.message || "Erreur !");
-            });
-        });
+    fetch('/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(response => {
+        if (!response.ok) return response.json().then(err => { throw err; });
+        return response.json();
+    }).then(() => {
+        alert("Merci pour votre participation !");
+        location.reload();
+    }).catch(err => {
+        alert(err.message || "Erreur !");
+    });
+});
+
     </script>
 </body>
 </html>

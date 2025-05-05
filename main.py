@@ -96,10 +96,12 @@ def submit():
 def save_results(data):
     file_path = os.path.join("data", "results.csv")
     os.makedirs("data", exist_ok=True)
+
     if not os.path.exists(file_path):
         open(file_path, 'w').close()
 
     df = pd.DataFrame([data])
+    print("Saving to CSV:", df)  # Debugging line
     df.to_csv(file_path, mode='a', header=not os.path.getsize(file_path), index=False)
 
 
